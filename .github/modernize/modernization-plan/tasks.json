@@ -1,26 +1,21 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "description": "Tasks template for modernization plan. Generate this file alongside plan.md to track individual migration tasks.",
+  "metadata": {
+    "planName": "modernization-plan",
+    "projectName": "ContosoUniversity",
+    "language": "dotnet",
+    "createdAt": "2026-05-28T03:22:02.000Z",
+    "version": "1.0"
+  },
   "tasks": [
     {
-      "type": "upgrade",
-      "id": "001-upgrade-dotnet",
-      "description": "Upgrade ContosoUniversity from .NET Framework 4.8 / ASP.NET MVC 5 to .NET 10 with ASP.NET Core MVC",
-      "reason": "The project targets .NET Framework 4.8 with ASP.NET MVC 5, which cannot run cross-platform or in modern cloud/container environments. The assessment identified a .NET version upgrade as required. Upgrading to .NET 10 (latest LTS) enables Azure App Service deployment, container support, and compatibility with modern Azure SDKs.",
-      "requirements": "Upgrade the project from .NET Framework 4.8 to net10.0. Convert the legacy non-SDK-style project format to SDK-style. Migrate configuration from Web.config and appSettings to appsettings.json and the modern configuration system. Migrate from ASP.NET MVC 5 to ASP.NET Core MVC. Migrate Global.asax application startup to Program.cs and Startup patterns. Migrate packages.config to PackageReference. Ensure the project builds and all existing functionality is preserved after upgrade.",
-      "successCriteria": {
-        "passBuild": "true",
-        "generateNewUnitTests": "false",
-        "passUnitTests": "true"
-      }
-    },
-    {
       "type": "transform",
-      "id": "002-transform-azure-sql-database",
-      "description": "Migrate from local SQL Server (LocalDB) to Azure SQL Database with Managed Identity",
-      "reason": "The application uses a local SQL Server LocalDB instance via Entity Framework Core. For Azure deployment, the database must be migrated to Azure SQL Database. Using Managed Identity eliminates the need to store credentials in configuration files.",
-      "requirements": "Migrate the SQL Server database connection from LocalDB to Azure SQL Database. Update Entity Framework Core to use Azure SQL Database with Managed Identity (passwordless) authentication via DefaultAzureCredential. Remove the plain connection string from configuration and replace with the Azure SQL Database endpoint. Ensure all CRUD operations for Students, Courses, Instructors, and Departments continue to function correctly.",
-      "dependencies": ["001-upgrade-dotnet"],
+      "id": "001-transform-sql-to-azure-sql",
+      "description": "Migrate the SQL Server LocalDB database connection to Azure SQL Database with Managed Identity authentication",
+      "reason": "The application uses SQL Server LocalDB with a credential-based connection string. Migrating to Azure SQL Database with Managed Identity removes hardcoded credentials and enables secure, passwordless access in the cloud.",
+      "requirements": "Migrate the SQL Server LocalDB connection in SchoolContextFactory and Web.config to use Azure SQL Database. Replace connection string credentials with Managed Identity (passwordless) authentication. Ensure Entity Framework Core 3.1 with the SqlServer provider continues to function correctly against Azure SQL Database.",
+      "dependencies": [],
       "skills": [
         {
           "name": "migration-azure-sql-database",
@@ -35,11 +30,11 @@
     },
     {
       "type": "transform",
-      "id": "003-transform-msmq-to-azure-servicebus",
-      "description": "Migrate Windows MSMQ notification system to Azure Service Bus",
-      "reason": "The application uses Windows-only MSMQ (System.Messaging) for sending and receiving entity change notifications. MSMQ is not available in cloud or Linux environments. Azure Service Bus is the cloud-native replacement that provides reliable messaging with Managed Identity support.",
-      "requirements": "Replace the MSMQ-based NotificationService (which uses System.Messaging.MessageQueue) with Azure Service Bus queue messaging. Use Azure Service Bus with Managed Identity (DefaultAzureCredential) for authentication. Maintain the existing notification contract: send notifications on entity create/update/delete operations for Students, Courses, Instructors, and Departments, and receive notifications in the NotificationsController. Remove the System.Messaging dependency. Update configuration to use Azure Service Bus connection/namespace endpoint instead of MSMQ queue path.",
-      "dependencies": ["001-upgrade-dotnet"],
+      "id": "002-transform-msmq-to-servicebus",
+      "description": "Migrate the MSMQ-based NotificationService to Azure Service Bus with Managed Identity authentication",
+      "reason": "The application uses MSMQ (System.Messaging) for notification queuing. MSMQ is a Windows-only, on-premises technology that does not work in cloud or container environments. Azure Service Bus provides equivalent functionality with cloud-native reliability and Managed Identity support.",
+      "requirements": "Replace System.Messaging.MessageQueue usage in NotificationService with Azure Service Bus. Migrate queue creation, message send, and message receive operations to Azure Service Bus equivalents. Use Managed Identity (DefaultAzureCredential) for authentication. Update Web.config configuration to reference the Azure Service Bus namespace endpoint instead of an MSMQ path. Preserve existing SendNotification and ReceiveNotification method signatures.",
+      "dependencies": [],
       "skills": [
         {
           "name": "migration-azure-servicebus",
@@ -54,11 +49,11 @@
     },
     {
       "type": "transform",
-      "id": "004-transform-local-storage-to-azure-blob",
-      "description": "Migrate local file system teaching material uploads to Azure Blob Storage",
-      "reason": "Course teaching material images are currently saved to the local file system under ~/Uploads/TeachingMaterials/. Local file storage is not durable or scalable for cloud deployments. Azure Blob Storage provides durable, scalable, and cloud-native storage with Managed Identity authentication.",
-      "requirements": "Replace local file system operations in CoursesController (upload, retrieve, delete of teaching material images) with Azure Blob Storage operations. Use a dedicated blob container for teaching materials. Authenticate using Managed Identity (DefaultAzureCredential). Maintain the same upload validation (file types: jpg, jpeg, png, gif, bmp; max size 5MB). Update the TeachingMaterialImagePath stored in the database to reference the blob URL or path instead of local file path. Ensure image display in views continues to work after migration.",
-      "dependencies": ["001-upgrade-dotnet"],
+      "id": "003-transform-local-storage-to-blob",
+      "description": "Migrate teaching material file uploads from the local file system to Azure Blob Storage with Managed Identity authentication",
+      "reason": "The application saves uploaded teaching material images to a local file system path (~/Uploads/TeachingMaterials/). Local file system storage is not suitable for cloud deployments due to lack of persistence, scalability, and accessibility across multiple instances. Azure Blob Storage provides durable, scalable storage with Managed Identity authentication.",
+      "requirements": "Replace local file system operations in CoursesController (upload, delete) with Azure Blob Storage SDK calls. Migrate file save (SaveAs) and file delete (File.Delete) operations to blob upload and blob delete operations respectively. Use Managed Identity (DefaultAzureCredential) for authentication to Azure Blob Storage. Update the TeachingMaterialImagePath stored on the Course model to reference the Azure Blob URL instead of a local file path. Maintain existing validation logic for file type and file size.",
+      "dependencies": [],
       "skills": [
         {
           "name": "migration-azure-storage-blob",
@@ -73,15 +68,15 @@
     },
     {
       "type": "security",
-      "id": "005-security-cve-remediation",
-      "description": "Scan and remediate CVEs in all project dependencies",
-      "reason": "Before deploying to Azure, all project dependencies must be free of known security vulnerabilities. The project uses several older package versions that may have CVEs.",
-      "requirements": "Upgrade vulnerable dependencies to the minimum patched version. If a CVE fix requires a major version upgrade, document the affected dependency, the current version, the upgraded major version, and the breaking change risk. Verify that the project builds and all tests pass after remediation.",
+      "id": "004-security-cve-remediation",
+      "description": "Scan and remediate CVEs in project dependencies",
+      "reason": "Before deploying to Azure, all known vulnerabilities in project dependencies must be identified and resolved to ensure the application meets security compliance requirements.",
+      "requirements": "Upgrade vulnerable dependencies to the minimum patched version. If a CVE fix requires a major version upgrade, document the affected dependency, current version, upgraded major version, and breaking change risk. Verify that the project builds and all tests pass after remediation.",
+      "environmentConfiguration": "Runtime environment: .NET Framework 4.8. Build tool: MSBuild with packages.config.",
       "dependencies": [
-        "001-upgrade-dotnet",
-        "002-transform-azure-sql-database",
-        "003-transform-msmq-to-azure-servicebus",
-        "004-transform-local-storage-to-azure-blob"
+        "001-transform-sql-to-azure-sql",
+        "002-transform-msmq-to-servicebus",
+        "003-transform-local-storage-to-blob"
       ],
       "skills": [
         {
@@ -94,30 +89,6 @@
         "generateNewUnitTests": "false",
         "passUnitTests": "true"
       }
-    },
-    {
-      "type": "deployment",
-      "id": "006-deployment-azure-app-service",
-      "description": "Deploy the modernized ContosoUniversity application to Azure App Service",
-      "reason": "After all Azure service migrations and security hardening are complete, the application needs to be deployed to Azure App Service to run in the cloud with Managed Identity access to Azure SQL Database, Service Bus, and Blob Storage.",
-      "requirements": "Deploy the modernized ASP.NET Core application to Azure App Service. Configure Managed Identity on the App Service to grant access to Azure SQL Database, Azure Service Bus, and Azure Blob Storage. Set up application configuration for all Azure service endpoints. Ensure the application starts successfully and all routes are accessible.",
-      "dependencies": ["005-security-cve-remediation"],
-      "targetAzureService": "Azure App Service",
-      "resourceStatus": "Create new Azure App Service",
-      "deploymentTool": "bicep",
-      "skills": [
-        {
-          "name": "azcli-appservicemi-deploy",
-          "location": "builtin"
-        }
-      ]
     }
-  ],
-  "metadata": {
-    "planName": "modernization-plan",
-    "projectName": "ContosoUniversity",
-    "language": "dotnet",
-    "createdAt": "2026-05-28T03:08:22.858Z",
-    "version": "1.0"
-  }
+  ]
 }

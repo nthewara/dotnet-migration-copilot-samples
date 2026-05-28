@@ -257,6 +257,7 @@
     <Content Include="Content\bootstrap.css.map" />
     <Content Include="Content\bootstrap.min.css.map" />
     <Content Include="ROLE_SETUP_GUIDE.md" />
+    <Content Include="APPLICATION_OVERVIEW.md" />
     <None Include="Scripts\jquery-3.4.1.intellisense.js" />
     <Content Include="Scripts\bootstrap.js" />
     <Content Include="Scripts\bootstrap.min.js" />
@@ -352,5 +353,3 @@
     </VisualStudio>
   </ProjectExtensions>
 </Project>
-
-
