@@ -15,20 +15,27 @@ namespace ContosoUniversity.Services
         {
             // Get queue path from configuration or use default
             _queuePath = ConfigurationManager.AppSettings["NotificationQueuePath"] ?? @".\Private$\ContosoUniversityNotifications";
-            
-            // Ensure the queue exists
-            if (!MessageQueue.Exists(_queuePath))
+
+            try
             {
-                _queue = MessageQueue.Create(_queuePath);
-                _queue.SetPermissions("Everyone", MessageQueueAccessRights.FullControl);
+                // Ensure the queue exists
+                if (!MessageQueue.Exists(_queuePath))
+                {
+                    _queue = MessageQueue.Create(_queuePath);
+                    _queue.SetPermissions("Everyone", MessageQueueAccessRights.FullControl);
+                }
+                else
+                {
+                    _queue = new MessageQueue(_queuePath);
+                }
+
+                // Configure queue formatter
+                _queue.Formatter = new XmlMessageFormatter(new Type[] { typeof(string) });
             }
-            else
+            catch (Exception ex)
             {
-                _queue = new MessageQueue(_queuePath);
+                System.Diagnostics.Debug.WriteLine($"Notifications disabled: {ex.Message}");
             }
-            
-            // Configure queue formatter
-            _queue.Formatter = new XmlMessageFormatter(new Type[] { typeof(string) });
         }
 
         public void SendNotification(string entityType, string entityId, EntityOperation operation, string userName = null)
@@ -40,6 +47,11 @@ namespace ContosoUniversity.Services
         {
             try
             {
+                if (_queue == null)
+                {
+                    return;
+                }
+
                 var notification = new Notification
                 {
                     EntityType = entityType,
@@ -71,6 +83,11 @@ namespace ContosoUniversity.Services
         {
             try
             {
+                if (_queue == null)
+                {
+                    return null;
+                }
+
                 var message = _queue.Receive(TimeSpan.FromSeconds(1));
                 var jsonContent = message.Body.ToString();
                 return JsonConvert.DeserializeObject<Notification>(jsonContent);
