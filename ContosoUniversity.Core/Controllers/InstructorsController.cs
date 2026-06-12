@@ -80,7 +80,7 @@ public class InstructorsController : BaseController
     // POST: Instructors/Create
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Create([Bind("LastName,FirstMidName,HireDate,OfficeAssignment")] Instructor instructor, string[] selectedCourses)
+    public async Task<IActionResult> Create([Bind("LastName,FirstMidName,HireDate,OfficeAssignment")] Instructor instructor, string[] selectedCourses)
     {
         if (selectedCourses != null)
         {
@@ -97,7 +97,7 @@ public class InstructorsController : BaseController
             db.Instructors.Add(instructor);
             db.SaveChanges();
 
-            SendEntityNotification("Instructor", instructor.ID.ToString(), EntityOperation.CREATE);
+            await SendEntityNotificationAsync("Instructor", instructor.ID.ToString(), EntityOperation.CREATE);
 
             return RedirectToAction(nameof(Index));
         }
@@ -149,7 +149,7 @@ public class InstructorsController : BaseController
     // POST: Instructors/Edit/5
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Edit(int? id, [Bind("LastName,FirstMidName,HireDate,OfficeAssignment")] Instructor instructor, string[] selectedCourses)
+    public async Task<IActionResult> Edit(int? id, [Bind("LastName,FirstMidName,HireDate,OfficeAssignment")] Instructor instructor, string[] selectedCourses)
     {
         if (id == null)
         {
@@ -185,7 +185,7 @@ public class InstructorsController : BaseController
 
                 db.SaveChanges();
 
-                SendEntityNotification("Instructor", instructorToUpdate.ID.ToString(), EntityOperation.UPDATE);
+                await SendEntityNotificationAsync("Instructor", instructorToUpdate.ID.ToString(), EntityOperation.UPDATE);
 
                 return RedirectToAction(nameof(Index));
             }
@@ -249,7 +249,7 @@ public class InstructorsController : BaseController
     // POST: Instructors/Delete/5 - Only admins can delete instructors
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
-    public IActionResult DeleteConfirmed(int id)
+    public async Task<IActionResult> DeleteConfirmed(int id)
     {
         var instructor = db.Instructors
             .Include(i => i.OfficeAssignment)
@@ -270,7 +270,7 @@ public class InstructorsController : BaseController
 
         db.SaveChanges();
 
-        SendEntityNotification("Instructor", id.ToString(), EntityOperation.DELETE);
+        await SendEntityNotificationAsync("Instructor", id.ToString(), EntityOperation.DELETE);
 
         return RedirectToAction(nameof(Index));
     }

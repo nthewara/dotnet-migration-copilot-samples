@@ -14,14 +14,14 @@ public class NotificationsController : BaseController
 
     // GET: api/notifications - Get pending notifications for admin
     [HttpGet]
-    public IActionResult GetNotifications()
+    public async Task<IActionResult> GetNotifications()
     {
         var notifications = new List<Notification>();
 
         try
         {
             Notification notification;
-            while ((notification = notificationService.ReceiveNotification()) != null)
+            while ((notification = await notificationService.ReceiveNotificationAsync()) != null)
             {
                 notifications.Add(notification);
 

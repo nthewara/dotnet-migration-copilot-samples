@@ -1,6 +1,9 @@
 using System;
-using System.Messaging;
 using System.Configuration;
+using System.Text;
+using System.Threading.Tasks;
+using Azure.Identity;
+using Azure.Messaging.ServiceBus;
 using ContosoUniversity.Models;
 using Newtonsoft.Json;
 
@@ -8,29 +11,29 @@ namespace ContosoUniversity.Services
 {
     public class NotificationService
     {
-        private readonly string _queuePath;
-        private readonly MessageQueue _queue;
+        private readonly ServiceBusClient _serviceBusClient;
+        private readonly ServiceBusSender _sender;
+        private readonly ServiceBusReceiver _receiver;
+        private readonly string _queueName;
 
         public NotificationService()
         {
-            // Get queue path from configuration or use default
-            _queuePath = ConfigurationManager.AppSettings["NotificationQueuePath"] ?? @".\Private$\ContosoUniversityNotifications";
+            // Get Azure Service Bus configuration
+            var fullyQualifiedNamespace = ConfigurationManager.AppSettings["AzureServiceBus:FullyQualifiedNamespace"];
+            _queueName = ConfigurationManager.AppSettings["AzureServiceBus:QueueName"] ?? "contoso-university-notifications";
 
             try
             {
-                // Ensure the queue exists
-                if (!MessageQueue.Exists(_queuePath))
+                if (string.IsNullOrWhiteSpace(fullyQualifiedNamespace))
                 {
-                    _queue = MessageQueue.Create(_queuePath);
-                    _queue.SetPermissions("Everyone", MessageQueueAccessRights.FullControl);
-                }
-                else
-                {
-                    _queue = new MessageQueue(_queuePath);
+                    System.Diagnostics.Debug.WriteLine("Azure Service Bus not configured. Notifications disabled.");
+                    return;
                 }
 
-                // Configure queue formatter
-                _queue.Formatter = new XmlMessageFormatter(new Type[] { typeof(string) });
+                var credential = new DefaultAzureCredential();
+                _serviceBusClient = new ServiceBusClient(fullyQualifiedNamespace, credential);
+                _sender = _serviceBusClient.CreateSender(_queueName);
+                _receiver = _serviceBusClient.CreateReceiver(_queueName);
             }
             catch (Exception ex)
             {
@@ -47,7 +50,7 @@ namespace ContosoUniversity.Services
         {
             try
             {
-                if (_queue == null)
+                if (_sender == null)
                 {
                     return;
                 }
@@ -64,13 +67,14 @@ namespace ContosoUniversity.Services
                 };
 
                 var jsonMessage = JsonConvert.SerializeObject(notification);
-                var message = new Message(jsonMessage)
+                var serviceBusMessage = new ServiceBusMessage(Encoding.UTF8.GetBytes(jsonMessage))
                 {
-                    Label = $"{entityType} {operation}",
-                    Priority = MessagePriority.Normal
+                    Subject = $"{entityType} {operation}",
+                    ContentType = "application/json"
                 };
 
-                _queue.Send(message);
+                // Use synchronous send (blocking call)
+                _sender.SendMessageAsync(serviceBusMessage).GetAwaiter().GetResult();
             }
             catch (Exception ex)
             {
@@ -83,19 +87,26 @@ namespace ContosoUniversity.Services
         {
             try
             {
-                if (_queue == null)
+                if (_receiver == null)
                 {
                     return null;
                 }
 
-                var message = _queue.Receive(TimeSpan.FromSeconds(1));
-                var jsonContent = message.Body.ToString();
-                return JsonConvert.DeserializeObject<Notification>(jsonContent);
-            }
-            catch (MessageQueueException ex) when (ex.MessageQueueErrorCode == MessageQueueErrorCode.IOTimeout)
-            {
-                // No messages available
-                return null;
+                // Receive message with timeout
+                var message = _receiver.ReceiveMessageAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
+
+                if (message == null)
+                {
+                    return null;
+                }
+
+                var jsonContent = Encoding.UTF8.GetString(message.Body.ToArray());
+                var notification = JsonConvert.DeserializeObject<Notification>(jsonContent);
+
+                // Complete the message to remove it from the queue
+                _receiver.CompleteMessageAsync(message).GetAwaiter().GetResult();
+
+                return notification;
             }
             catch (Exception ex)
             {
@@ -131,7 +142,9 @@ namespace ContosoUniversity.Services
 
         public void Dispose()
         {
-            _queue?.Dispose();
+            _sender?.DisposeAsync().GetAwaiter().GetResult();
+            _receiver?.DisposeAsync().GetAwaiter().GetResult();
+            _serviceBusClient?.DisposeAsync().GetAwaiter().GetResult();
         }
     }
 }

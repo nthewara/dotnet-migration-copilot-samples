@@ -1,35 +1,39 @@
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
+using Azure.Identity;
+using Azure.Messaging.ServiceBus;
 using ContosoUniversity.Models;
 using Microsoft.Extensions.Options;
-using MSMQ.Messaging;
 
 namespace ContosoUniversity.Services;
 
 public sealed class NotificationService : INotificationService
 {
-    private readonly string _queuePath;
-    private readonly MessageQueue _queue;
+    private readonly ServiceBusClient _serviceBusClient;
+    private readonly ServiceBusSender _sender;
+    private readonly ServiceBusReceiver _receiver;
+    private readonly string _queueName;
 
-    public NotificationService(IOptions<MessageQueueOptions> options)
+    public NotificationService(IOptions<ServiceBusOptions> options)
     {
-        _queuePath = string.IsNullOrWhiteSpace(options.Value.QueuePath)
-            ? @".\Private$\ContosoUniversityNotifications"
-            : options.Value.QueuePath;
+        var fullyQualifiedNamespace = options.Value.FullyQualifiedNamespace;
+        _queueName = string.IsNullOrWhiteSpace(options.Value.QueueName)
+            ? "contoso-university-notifications"
+            : options.Value.QueueName;
 
         try
         {
-            if (!MessageQueue.Exists(_queuePath))
+            if (string.IsNullOrWhiteSpace(fullyQualifiedNamespace))
             {
-                _queue = MessageQueue.Create(_queuePath);
-                _queue.SetPermissions("Everyone", MessageQueueAccessRights.FullControl);
-            }
-            else
-            {
-                _queue = new MessageQueue(_queuePath);
+                Debug.WriteLine("Azure Service Bus not configured. Notifications disabled.");
+                return;
             }
 
-            _queue.Formatter = new XmlMessageFormatter(new[] { typeof(string) });
+            var credential = new DefaultAzureCredential();
+            _serviceBusClient = new ServiceBusClient(fullyQualifiedNamespace, credential);
+            _sender = _serviceBusClient.CreateSender(_queueName);
+            _receiver = _serviceBusClient.CreateReceiver(_queueName);
         }
         catch (Exception ex)
         {
@@ -37,16 +41,16 @@ public sealed class NotificationService : INotificationService
         }
     }
 
-    public void SendNotification(string entityType, string entityId, EntityOperation operation, string userName = null)
+    public async Task SendNotificationAsync(string entityType, string entityId, EntityOperation operation, string userName = null)
     {
-        SendNotification(entityType, entityId, null, operation, userName);
+        await SendNotificationAsync(entityType, entityId, null, operation, userName);
     }
 
-    public void SendNotification(string entityType, string entityId, string entityDisplayName, EntityOperation operation, string userName = null)
+    public async Task SendNotificationAsync(string entityType, string entityId, string entityDisplayName, EntityOperation operation, string userName = null)
     {
         try
         {
-            if (_queue is null)
+            if (_sender is null)
             {
                 return;
             }
@@ -63,13 +67,13 @@ public sealed class NotificationService : INotificationService
             };
 
             var jsonMessage = JsonSerializer.Serialize(notification);
-            var message = new Message(jsonMessage)
+            var serviceBusMessage = new ServiceBusMessage(Encoding.UTF8.GetBytes(jsonMessage))
             {
-                Label = $"{entityType} {operation}",
-                Priority = MessagePriority.Normal
+                Subject = $"{entityType} {operation}",
+                ContentType = "application/json"
             };
 
-            _queue.Send(message);
+            await _sender.SendMessageAsync(serviceBusMessage);
         }
         catch (Exception ex)
         {
@@ -77,24 +81,29 @@ public sealed class NotificationService : INotificationService
         }
     }
 
-    public Notification ReceiveNotification()
+    public async Task<Notification> ReceiveNotificationAsync()
     {
         try
         {
-            if (_queue is null)
+            if (_receiver is null)
             {
                 return null;
             }
 
-            var message = _queue.Receive(TimeSpan.FromSeconds(1));
-            var jsonContent = message.Body?.ToString();
-            return string.IsNullOrWhiteSpace(jsonContent)
-                ? null
-                : JsonSerializer.Deserialize<Notification>(jsonContent);
-        }
-        catch (MessageQueueException ex) when (ex.MessageQueueErrorCode == MessageQueueErrorCode.IOTimeout)
-        {
-            return null;
+            var message = await _receiver.ReceiveMessageAsync(TimeSpan.FromSeconds(1));
+
+            if (message is null)
+            {
+                return null;
+            }
+
+            var jsonContent = Encoding.UTF8.GetString(message.Body.ToArray());
+            var notification = JsonSerializer.Deserialize<Notification>(jsonContent);
+
+            // Complete the message to remove it from the queue
+            await _receiver.CompleteMessageAsync(message);
+
+            return notification;
         }
         catch (Exception ex)
         {
@@ -125,6 +134,8 @@ public sealed class NotificationService : INotificationService
 
     public void Dispose()
     {
-        _queue?.Dispose();
+        _sender?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _receiver?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _serviceBusClient?.DisposeAsync().AsTask().GetAwaiter().GetResult();
     }
 }

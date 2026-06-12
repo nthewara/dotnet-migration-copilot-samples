@@ -96,7 +96,7 @@ public class StudentsController : BaseController
     // POST: Students/Create
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Create([Bind("LastName,FirstMidName,EnrollmentDate")] Student student)
+    public async Task<IActionResult> Create([Bind("LastName,FirstMidName,EnrollmentDate")] Student student)
     {
         try
         {
@@ -108,7 +108,7 @@ public class StudentsController : BaseController
                 db.SaveChanges();
 
                 var studentName = $"{student.FirstMidName} {student.LastName}";
-                SendEntityNotification("Student", student.ID.ToString(), studentName, EntityOperation.CREATE);
+                await SendEntityNotificationAsync("Student", student.ID.ToString(), studentName, EntityOperation.CREATE);
 
                 return RedirectToAction(nameof(Index));
             }
@@ -142,7 +142,7 @@ public class StudentsController : BaseController
     // POST: Students/Edit/5
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Edit([Bind("ID,LastName,FirstMidName,EnrollmentDate")] Student student)
+    public async Task<IActionResult> Edit([Bind("ID,LastName,FirstMidName,EnrollmentDate")] Student student)
     {
         try
         {
@@ -154,7 +154,7 @@ public class StudentsController : BaseController
                 db.SaveChanges();
 
                 var studentName = $"{student.FirstMidName} {student.LastName}";
-                SendEntityNotification("Student", student.ID.ToString(), studentName, EntityOperation.UPDATE);
+                await SendEntityNotificationAsync("Student", student.ID.ToString(), studentName, EntityOperation.UPDATE);
 
                 return RedirectToAction(nameof(Index));
             }
@@ -188,7 +188,7 @@ public class StudentsController : BaseController
     // POST: Students/Delete/5
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
-    public IActionResult DeleteConfirmed(int id)
+    public async Task<IActionResult> DeleteConfirmed(int id)
     {
         try
         {
@@ -202,7 +202,7 @@ public class StudentsController : BaseController
             db.Students.Remove(student);
             db.SaveChanges();
 
-            SendEntityNotification("Student", id.ToString(), studentName, EntityOperation.DELETE);
+            await SendEntityNotificationAsync("Student", id.ToString(), studentName, EntityOperation.DELETE);
 
             return RedirectToAction(nameof(Index));
         }

@@ -8,7 +8,7 @@ builder.Services.AddHttpForwarder();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddDbContext<SchoolContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-builder.Services.Configure<MessageQueueOptions>(builder.Configuration.GetSection("MessageQueue"));
+builder.Services.Configure<ServiceBusOptions>(builder.Configuration.GetSection("AzureServiceBus"));
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // Add services to the container.

@@ -73,7 +73,7 @@ public class CoursesController : BaseController
             db.Courses.Add(course);
             db.SaveChanges();
 
-            SendEntityNotification("Course", course.CourseID.ToString(), course.Title, EntityOperation.CREATE);
+            await SendEntityNotificationAsync("Course", course.CourseID.ToString(), course.Title, EntityOperation.CREATE);
 
             return RedirectToAction(nameof(Index));
         }
@@ -125,7 +125,7 @@ public class CoursesController : BaseController
             db.Entry(course).State = EntityState.Modified;
             db.SaveChanges();
 
-            SendEntityNotification("Course", course.CourseID.ToString(), course.Title, EntityOperation.UPDATE);
+            await SendEntityNotificationAsync("Course", course.CourseID.ToString(), course.Title, EntityOperation.UPDATE);
 
             return RedirectToAction(nameof(Index));
         }
@@ -154,7 +154,7 @@ public class CoursesController : BaseController
     // POST: Courses/Delete/5
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
-    public IActionResult DeleteConfirmed(int id)
+    public async Task<IActionResult> DeleteConfirmed(int id)
     {
         var course = db.Courses.Find(id);
         if (course == null)
@@ -168,7 +168,7 @@ public class CoursesController : BaseController
         db.Courses.Remove(course);
         db.SaveChanges();
 
-        SendEntityNotification("Course", id.ToString(), courseTitle, EntityOperation.DELETE);
+        await SendEntityNotificationAsync("Course", id.ToString(), courseTitle, EntityOperation.DELETE);
 
         return RedirectToAction(nameof(Index));
     }
