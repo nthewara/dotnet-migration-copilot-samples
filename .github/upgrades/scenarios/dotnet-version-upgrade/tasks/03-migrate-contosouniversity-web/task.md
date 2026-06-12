@@ -1,0 +1,7 @@
+# 03-migrate-contosouniversity-web: Migrate web application assets to ASP.NET Core
+
+Migrate the ContosoUniversity web application from System.Web/MVC patterns into the side-by-side ASP.NET Core project. This includes controllers, routing, filters, application initialization currently represented by `Global.asax.cs`, views/static assets, bundling replacement for `System.Web.Optimization`, configuration migration to `appsettings.json`/`IConfiguration`, and package/API remediation needed for the new `net10.0` target.
+
+The assessment found 495 ASP.NET Framework issues, 536 binary incompatible API occurrences, 37 source incompatible API occurrences, 2 incompatible packages, 24 recommended package upgrades, 1 vulnerable package, and multiple binding redirect conflicts. The approved options require resolving package and API issues inline, using System.Web Adapters where helpful during incremental migration, auto-migrating configuration, and documenting binding redirects before removal.
+
+**Done when**: The migrated ASP.NET Core project implements the ContosoUniversity web functionality in scope, legacy System.Web/MVC initialization and route/filter registration are replaced with ASP.NET Core equivalents, incompatible/deprecated/vulnerable package issues are addressed inline, binding redirect findings are reviewed before removal, the old Framework project remains present, and the solution builds without errors or warnings.
