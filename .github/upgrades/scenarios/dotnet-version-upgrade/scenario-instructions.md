@@ -47,6 +47,10 @@
 - Reference cleanup (test projects, multi-targeting) is part of migrate, not a separate task
 - Old project is NOT deleted by the agent — documented as post-upgrade step for user
 
+## Build Tool Decisions
+- **ContosoUniversity.csproj**: Visual Studio MSBuild (`MSBuild.exe`) for the existing legacy non-SDK-style ASP.NET Framework web project.
+- **ContosoUniversity.Core.csproj**: `dotnet build` for the new SDK-style ASP.NET Core `net10.0` project.
+
 ## Key Decisions Log
 - User selected Guided mode during initialization.
 - User approved the generated assessment and confirmed proceeding to planning.

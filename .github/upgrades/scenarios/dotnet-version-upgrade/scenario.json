@@ -3,11 +3,24 @@
   "operationId": "d5a34502-6427-4a22-b467-0224c3201250",
   "description": "Upgrade .NET projects to newer .NET versions, including guidance on current release status, support lifecycle (LTS/STS), and recommended upgrade targets.",
   "startTime": "2026-06-12T11:17:50.5127816Z",
-  "lastUpdateTime": "2026-06-12T11:24:29.7111898Z",
+  "lastUpdateTime": "2026-06-12T22:42:35.211451Z",
   "properties": {
     "UpgradeTargetFramework": "net10.0",
     "taskStates": {
-      "01-verify-toolchain-and-project-state": "InProgress"
+      "01-verify-toolchain-and-project-state": "Completed",
+      "02-scaffold-contosouniversity-core": "Completed",
+      "03-migrate-contosouniversity-web": "InProgress",
+      "03.01-core-foundation": "Completed",
+      "03.02-notification-service-msmq": "Completed",
+      "03.03-home-controller": "Completed",
+      "03.04-students-controller": "Completed",
+      "03.05-departments-controller": "Completed",
+      "03.06-courses-controller": "Completed",
+      "03.07-instructors-controller": "Completed",
+      "03.08-notifications-controller": "Completed",
+      "03.09-views-and-static-assets": "Completed",
+      "03.10-cleanup-package-binding-validation": "Completed",
+      "04-final-validation-and-handoff": "Completed"
     }
   },
   "folderPath": ""
