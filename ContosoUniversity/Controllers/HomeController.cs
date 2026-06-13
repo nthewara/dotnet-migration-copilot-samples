@@ -38,6 +38,7 @@ namespace ContosoUniversity.Controllers
             return View();
         }
 
+        [AllowAnonymous]
         public ActionResult Unauthorized()
         {
             ViewBag.Message = "You don't have permission to access this resource.";

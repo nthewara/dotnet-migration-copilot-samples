@@ -7,8 +7,7 @@ namespace ContosoUniversity
         public static void RegisterGlobalFilters(GlobalFilterCollection filters)
         {
             filters.Add(new HandleErrorAttribute());
-            // Remove the global authorization filter since we're implementing role-based authorization
-            // filters.Add(new AuthorizeAttribute()); // Require authentication for all controllers
+            filters.Add(new AuthorizeAttribute());
         }
     }
 }
